@@ -1,42 +1,39 @@
 <html>
 <head>
 	<title>
-		Chat with socket.io+nodejs+express
+		Public Chat with Socket.io+Nodejs+HapiJs
 	</title>
 	<style type="text/css">
-	#chat
-	{
+	#chat {
 		width: 400px;
 		height: 500px;
 		overflow: scroll;
 	}
-	#contentwrap
-	{
+	#contentwrap {
 		display: none;
 	}
-	#chatwrap
-	{
+	#chatwrap {
 		float: left;
 		border: 1px #000 solid;
 	}
-	.error
-	{
+	.error {
 		color: red;
 	}
-	.whisper
-	{
+	.whisper {
 		color: green;
 		font-style: italic;
 	}
 	</style>
 </head>
 <body>
-	<div id="nickwrap">
-		<p>Enter your username:</p>
-		<p id="nicknameerror"></p>
-		<form id="setnick">
-			<input type="text" id="nickname"/>
-			<input type="submit"/>
+	<div id="user_form_box">
+		<p id="username_error"></p>
+		<form id="user_form">
+			<label for="username">
+				Enter your username:
+			</label>
+			<input type="text" id="username"/>
+			<input type="submit" value="send"/>
 		</form>
 	</div>
 	<div id="contentwrap">
@@ -52,61 +49,56 @@
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
 	<script src="/socket.io/socket.io.js"></script>
 	<script>
-		$(function(){//shorthand for document.ready
-			var socket=io.connect();
-			var $nick_form=$('#setnick');
-			var $nickerror=$('#nicknameerror');
-			var $nickbox=$('#nickname');
-			var $message_form=$('#sendmessage');
-			var $messageip=$('#message');
-			var $chat=$('#chat');
-			var $users=$('#users');
-			var ran=document.getElementById('nickname');
-			$nick_form.submit(function(e){
+		$(function(){
+			const socket=io.connect();
+			const user_from = $('#user_form');
+			const username_error = $('#username_error');
+			const username = $('#username');
+			const message_form = $('#sendmessage');
+			const message_input = $('#message');
+			const chat = $('#chat');
+			const users = $('#users');
+			user_from.submit(function(e){
 				e.preventDefault();
-				if($nickbox.val()=='' || $nickbox.val()==" "||ran.value.indexOf(' ') >= 0)
-				{
-					alert("not allowed");
+				if($.trim(username.val()) === '') {
+					alert("username is required");
+					user_from[0].focus();
 					return false;
+				} else {
+					socket.emit('new_user',username.val(),function(success){
+						if(success) {
+							$('#user_form_box').fadeOut();
+							$('#contentwrap').fadeIn();
+						}
+						else {
+							username_error.html('That username is already taken...Try again!');
+						}
+					});
 				}
-				socket.emit('new_user',$nickbox.val(),function(data){
-					if(data){
-						$('#nickwrap').fadeOut();
-						$('#contentwrap').fadeIn();
-					}
-					else
-					{
-						$nickerror.html('That username is already taken...Try again!');
-					}
-				});
-				$nickbox.val('');
 			});
-			$message_form.submit(function(e){
-				//alert($messageip.val());
+			message_form.submit(function(e){
 				e.preventDefault();
-				//console.log($messageip.val());
-				//alert($messageip.val());
-				socket.emit('sendmessage',$messageip.val(),function(data){
-					$chat.append('<span class="error"><b>'+data+"</span><Br>");
-				});
-				$messageip.val("");//clear input field
+				socket.emit('new_message', { username: username.val(), message: message_input.val() });
+				message_input.val('');
+			});
 
+			socket.on('new_message',function(data) {
+				chat.append('<span class="normal"><b>'+data.username+':-</b>'+data.message+"</span><Br>");
 			});
-			socket.on('new_message',function(data){
-				//console.log(data);
-				$chat.append('<span class="normal"><b>'+data.nick+':-</b>'+data.msg+"</span><Br>");
-			});
-			socket.on('usernames',function(data){
-				var str=' ';
-				for(var i=0;i<data.length;i++)
-				{
-					str+=data[i]+'<br/>';
+
+			socket.on('users',function(users_data){
+				let str=' ';
+				if (users_data) {
+					for (const user of users_data) {
+						str += user + '<br/>';
+					}
+					users.html(str);
 				}
-				$users.html(str);
 			});
-			socket.on('whisper',function(data){
-				$chat.append('<span class="whisper"><b>'+data.nick+':-</b>'+data.msg+"</span><Br>");
-			})
+
+			// socket.on('whisper',function(data){
+			// 	chat.append('<span class="whisper"><b>'+data.username+':-</b>'+data.msg+"</span><Br>");
+			// });
 		});
 	</script>
 </body>

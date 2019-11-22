@@ -1,22 +1,30 @@
+const users = [];
+const message = [];
 
-function socket_events (client, io) {
-    const message = [];
+module.exports = (client, io) => {
 
     client.on('new_message', (data) => {
+        message.push(data);
         io.emit('new_message', data);
     });
 
-    client.on('create_room', function(room) {
-        client.join(room);
-    });
+    // client.on('get_messages', (data) => {
+    //     io.emit('new_message', message.slice(-1, -10));
+    // });
+
+    io.emit('users', users);
 
     client.on('disconnect', () => {
-        console.log(`connected ${io.sockets.length}`);
+        console.log(`disconnect`);
     });
 
-    client.on('new_user', ({username, password}, next) => {
-
+    client.on('new_user', (username, next) => {
+        if (users.indexOf(username) > -1) {
+            next(false);
+        } else {
+            users.push(username);
+            io.emit('users', users);
+            next(true);
+        }
     });
-}
-
-module.exports = socket_events;
+};
